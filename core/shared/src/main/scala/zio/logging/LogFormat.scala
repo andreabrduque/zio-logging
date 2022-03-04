@@ -16,7 +16,7 @@
 package zio.logging
 
 import zio.logging.internal._
-import zio.{ FiberId, LogLevel, LogSpan, ZFiberRef, ZLogger, ZTraceElement }
+import zio.{FiberId, LogLevel, LogSpan, ZFiberRef, ZLogger, ZTraceElement}
 
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -36,7 +36,7 @@ trait LogFormat { self =>
    * A low-level interface which allows efficiently building a message with a
    * mutable builder.
    */
-  private[logging] def unsafeFormat(
+  def unsafeFormat(
     builder: LogAppender
   ): ZLogger[String, Unit]
 
@@ -145,6 +145,38 @@ trait LogFormat { self =>
     builder.toString()
   }
 
+  /**
+   * Converts this log format into a text logger, which accepts text input, and
+   * produces text output.
+   */
+  final def toLogger2(appender: LogAppender, built: Any => String): ZLogger[String, String] = (
+                                                  trace: ZTraceElement,
+                                                  fiberId: FiberId,
+                                                  logLevel: LogLevel,
+                                                  message: () => String,
+                                                  context: Map[ZFiberRef.Runtime[_], AnyRef],
+                                                  spans: List[LogSpan],
+                                                  location: ZTraceElement,
+                                                  annotations: Map[String, String]
+                                                ) => {
+
+   // val builder = new StringBuilder()
+    //val appender = (x: Either[String, Json]) => builder.append(x.map(_.toJson).merge)
+    //structured(appender(_))
+    self.unsafeFormat(appender)(
+      trace,
+      fiberId,
+      logLevel,
+      message,
+      context,
+      spans,
+      location,
+      annotations
+    )
+    built()
+   // builder.toString()
+  }
+
   private def defaultHighlighter(level: LogLevel) = level match {
     case LogLevel.Error   => LogColor.RED
     case LogLevel.Warning => LogColor.YELLOW
@@ -158,7 +190,7 @@ object LogFormat {
 
   private val NL = System.lineSeparator()
 
-  private[logging] def make(
+ def make(
     format: (
       LogAppender,
       ZTraceElement,
@@ -203,6 +235,15 @@ object LogFormat {
             builder.appendKeyValue(ann.name, ann.render(value))
           }
         }
+    }
+
+  def annotation[A](ann: LogAnnotation[A], format: LogFormat): LogFormat =
+    LogFormat.make { (builder, trace, fiberId, logLevel, message, context, spans, location, annotations) =>
+      annotations.get(ann.name).foreach { value =>
+        try format.unsafeFormat(builder)(trace, fiberId, logLevel, message, context, spans, location, annotations)
+        finally builder.closeValue()
+        builder.appendKeyValue(ann.name, value)
+      }
     }
 
   def bracketed(inner: LogFormat): LogFormat =
@@ -280,5 +321,6 @@ object LogFormat {
       label("level", level).highlight |-|
       label("thread", fiberId).color(LogColor.WHITE) |-|
       label("message", quoted(line)).highlight
+
 
 }

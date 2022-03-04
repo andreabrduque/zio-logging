@@ -15,7 +15,9 @@
  */
 package zio
 
-import java.nio.charset.{ Charset, StandardCharsets }
+import zio.logging.internal.LogAppender
+
+import java.nio.charset.{Charset, StandardCharsets}
 import java.nio.file.Path
 
 package object logging {
@@ -41,10 +43,28 @@ package object logging {
     FiberRef.unsafeMake(LogContext.empty, identity, (old, newV) => old ++ newV)
 
   def console(
+               format: LogFormat = LogFormat.colored,
+               logLevel: LogLevel = LogLevel.Info
+             ): RuntimeConfigAspect = {
+    val stringLogger = format.toLogger.map { line =>
+      try java.lang.System.out.println(line)
+      catch {
+        case t: VirtualMachineError => throw t
+        case _: Throwable           => ()
+      }
+    }.filterLogLevel(_ >= logLevel)
+
+    val causeLogger = makeCauseLogger(stringLogger)
+
+    RuntimeConfigAspect.addLogger(stringLogger) >>> RuntimeConfigAspect.addLogger(causeLogger)
+  }
+  def json(
+    appender: LogAppender,
+    built: Any => String,
     format: LogFormat = LogFormat.colored,
     logLevel: LogLevel = LogLevel.Info
   ): RuntimeConfigAspect = {
-    val stringLogger = format.toLogger.map { line =>
+    val stringLogger = format.toLogger2(appender, built).map { line =>
       try java.lang.System.out.println(line)
       catch {
         case t: VirtualMachineError => throw t

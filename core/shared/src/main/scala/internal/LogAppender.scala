@@ -23,7 +23,7 @@ import zio._
  * higher-level than a string builder, because it allows for structured logging,
  * and preserves all ZIO-specific information about runtime failures.
  */
-private[logging] trait LogAppender { self =>
+trait LogAppender { self =>
 
   /**
    * Appends a [[zio.Cause]] to the log. Some logging backends may have
@@ -80,8 +80,9 @@ private[logging] trait LogAppender { self =>
 
     override def appendText(text: String): Unit = decorated(text)
   }
+
 }
-private[logging] object LogAppender {
+object LogAppender {
   class Proxy(self: LogAppender) extends LogAppender {
     def appendCause(cause: Cause[Any]): Unit = self.appendCause(cause)
 
@@ -94,7 +95,8 @@ private[logging] object LogAppender {
     def closeValue(): Unit = self.closeValue()
 
     def openKey(): Unit = self.openKey()
-  }
+
+ }
 
   /**
    * A [[LogAppender]] for unstructured logging, which simply turns everything
@@ -112,5 +114,7 @@ private[logging] object LogAppender {
     def closeValue(): Unit = ()
 
     def openKey(): Unit = ()
+
   }
+
 }
