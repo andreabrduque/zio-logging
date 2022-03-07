@@ -173,7 +173,7 @@ trait LogFormat { self =>
       location,
       annotations
     )
-    built()
+   built()
    // builder.toString()
   }
 

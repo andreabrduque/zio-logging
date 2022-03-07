@@ -1,4 +1,3 @@
-import com.fasterxml.jackson.annotation.JsonFormat
 import zio.{Cause, ExitCode, FiberId, LogLevel, LogSpan, RuntimeConfigAspect, ZFiberRef, ZLogger, ZTraceElement}
 import zio.logging.{LogAnnotation, LogColor, LogContext, LogFormat, console, json, logContext}
 import zio.logging.LogFormat.{annotation, fiberId, label, level, line, quoted, timestamp}
@@ -29,20 +28,6 @@ object KeyJsonAnnotation {
   }
 
 }
-
-//class CustomAppender(self: LogAppender) extends LogAppender {
-//  def appendCause(cause: Cause[Any]): Unit = self.appendCause(cause)
-//
-//  def appendNumeric[A](numeric: A): Unit = self.appendNumeric(numeric)
-//
-//  def appendText(text: String): Unit = self.appendText(text)
-//
-//  def closeKeyOpenValue(): Unit = self.closeKeyOpenValue()
-//
-//  def closeValue(): Unit = self.closeValue()
-//
-//  def openKey(): Unit = self.openKey()
-//}
 
 object Example {
 
@@ -83,36 +68,48 @@ object Example {
       finally builder.closeValue()
     }
 
-  val builder = new StringBuilder()
-  val effectful: String => Unit = (x: String) => builder.append(x)
-  val appender: LogAppender = structured(effectful(_))
+  def getLogger(): RuntimeConfigAspect = {
+    val builder = new StringBuilder()
+    val effectful: String => Unit = (x: String) => builder.append(x)
+    val appender: LogAppender = structured(effectful(_))
 
-  val custom: LogFormat =
-    LogFormat.make { (builder, _, _, _, _, _, _, _, _) =>
-      builder.appendText("{")
-    } +  annotation("\"context\"") + LogFormat.make { (builder, _, _, _, _, _, _, _, _) =>
-      builder.appendText(",")
-    } + label("\"message\"", LogFormat.make { (builder, _, _, _, line, _, _, _, _) =>
-      builder.appendText(line())
-    } ) + LogFormat.make { (builder, _, _, _, _, _, _, _, _) =>
-      builder.appendText("}")
-    } + LogFormat.newLine
+    val custom: LogFormat =
+      LogFormat.make { (builder, _, _, _, _, _, _, _, _) =>
+        builder.appendText("{")
+      } +  annotation("\"context\"") + LogFormat.make { (builder, _, _, _, _, _, _, _, _) =>
+        builder.appendText(",")
+      } + label("\"message\"", LogFormat.make { (builder, _, _, _, line, _, _, _, _) =>
+        builder.appendText(line())
+      } ) + LogFormat.make { (builder, _, _, _, _, _, _, _, _) =>
+        builder.appendText("}")
+      } + LogFormat.newLine
 
 
 
-  val meh = json(appender, (_: Any) => {
-    builder.toString()
-  }, custom)
+    val meh = json(appender, (_: Any) => {
+      val result = builder.toString()
+      builder.clear()
+      result
+    }, custom)
+
+    meh
+  }
+
+
 
 }
 
 object App extends ZIOAppDefault {
 
-  import zio.logging._
 
- override def hook: RuntimeConfigAspect = Example.meh
+ import zio.logging._
+
+  override def hook: RuntimeConfigAspect = Example.getLogger()
 
     import zio._
+
+  //make Logging service
+  //global, for things injected before. local for local commits
 
   //inject any context into json form
   //if always pass key,value string->string pair
@@ -123,6 +120,15 @@ object App extends ZIOAppDefault {
    } yield ()
  }
 
+  val effect2 =  ZIO.logAnnotate("\"context\"", "{\"bananas\": \"pancake\"}"){
+    for {
+      _ <- ZIO.log("\"log 2\"")
+      // _ <- ZIO.log("\"log 2\"")
+    } yield ()
+  }
 
-  override def run = effect
+
+
+  override def run =   effect *> effect2
+
 }
