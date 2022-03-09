@@ -145,11 +145,7 @@ trait LogFormat { self =>
     builder.toString()
   }
 
-  /**
-   * Converts this log format into a text logger, which accepts text input, and
-   * produces text output.
-   */
-  final def toLogger2(appender: LogAppender, built: Any => String): ZLogger[String, String] = (
+  final def toLogger(appender: LogAppender, built: Any => String): ZLogger[String, String] = (
                                                   trace: ZTraceElement,
                                                   fiberId: FiberId,
                                                   logLevel: LogLevel,
@@ -160,9 +156,6 @@ trait LogFormat { self =>
                                                   annotations: Map[String, String]
                                                 ) => {
 
-   // val builder = new StringBuilder()
-    //val appender = (x: Either[String, Json]) => builder.append(x.map(_.toJson).merge)
-    //structured(appender(_))
     self.unsafeFormat(appender)(
       trace,
       fiberId,
@@ -173,8 +166,8 @@ trait LogFormat { self =>
       location,
       annotations
     )
-   built()
-   // builder.toString()
+   built(())
+
   }
 
   private def defaultHighlighter(level: LogLevel) = level match {

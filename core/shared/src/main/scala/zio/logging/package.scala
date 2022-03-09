@@ -58,13 +58,14 @@ package object logging {
 
     RuntimeConfigAspect.addLogger(stringLogger) >>> RuntimeConfigAspect.addLogger(causeLogger)
   }
+
   def json(
     appender: LogAppender,
     built: Any => String,
     format: LogFormat = LogFormat.colored,
     logLevel: LogLevel = LogLevel.Info
   ): RuntimeConfigAspect = {
-    val stringLogger = format.toLogger2(appender, built).map { line =>
+    val stringLogger = format.toLogger(appender, built).map { line =>
       try java.lang.System.out.println(line)
       catch {
         case t: VirtualMachineError => throw t
