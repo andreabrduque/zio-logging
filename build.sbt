@@ -120,6 +120,19 @@ lazy val examples = project
     publish / skip := true,
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % "1.2.6",
+      "net.logstash.logback" % "logstash-logback-encoder" % "6.6"
+    )
+  )
+
+lazy val stackdriver = project
+  .in(file("stackdriver"))
+  .dependsOn(slf4j)
+  .settings(stdSettings("zio-logging-stackdriver"))
+  .settings(dottySettings)
+  .settings(
+    publish / skip := true,
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % "1.2.6",
       "net.logstash.logback" % "logstash-logback-encoder" % "6.6",
       "dev.zio" %%% "zio-json" % "0.3.0-RC3",
       "dev.zio" %%% "zio" % ZioVersion

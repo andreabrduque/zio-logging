@@ -1,15 +1,15 @@
-package stackdriver
+package zio.logging.stackdriver
 
-import zio.{ Cause, RuntimeConfigAspect, ZTraceElement }
 import zio.logging.LogFormat.{ annotation, label, text }
 import zio.logging.internal.LogAppender
 import zio.logging.{ LogFormat, json }
+import zio.{ Cause, RuntimeConfigAspect, ZTraceElement }
 
 import java.time.ZonedDateTime
 
 private[stackdriver] object CustomFormatters {
 
-  def escape(value: String) = "\"" + value + "\""
+  def escape(value: String): String = "\"" + value + "\""
 
   private val openCurlyBrace  = text("{")
   private val closeCurlyBrace = text("}")

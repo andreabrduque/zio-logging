@@ -1,16 +1,17 @@
-package stackdriver
+package zio.logging.stackdriver
 
-import zio.{ UIO, ZIO }
 import zio.json._
 import zio.json.internal._
+import zio.{ UIO, ZIO }
+import zio.RuntimeConfigAspect
 
 final case class LoggingAnnotation[A](key: String, value: A)(implicit encoder: JsonEncoder[A]) {
-  def encode() = s"{\"${key}\": \"${value.toJson}\"}"
+  def encode(): String = s"{\"${key}\": \"${value.toJson}\"}"
 }
 
 object Logging {
 
-  import stackdriver.CustomFormatters._
+  import zio.logging.stackdriver.CustomFormatters._
 
   private def annotateEffect(value: String): ZIO.LogAnnotate = ZIO.logAnnotate(escape("context"), value)
 
@@ -31,6 +32,6 @@ object Logging {
       ZIO.logDebug(escape(message))
     }
 
-  def make() = getLogger()
+  def make(): RuntimeConfigAspect = getLogger()
 
 }
