@@ -11,33 +11,7 @@ import zio._
 
 import scala.collection.mutable.ListBuffer
 
-
-object KeyJsonAnnotation {
-
-  def apply(key: String): LogAnnotation[Either[String, Json]] =  LogAnnotation[Either[String, Json]](
-    name = key,
-    combine = (a: Either[String, Json], b: Either[String, Json]) => mergeAnnotation(a, b),
-    render = (value: Either[String, Json]) => value.map(_.toString).merge
-  )
-
-  def mergeAnnotation(a1: Either[String, Json], b1: Either[String, Json]): Either[String, Json] = {
-    for {
-      a <-  a1
-      b <- b1
-    } yield a.merge(b)
-  }
-
-}
-
 object Example {
-
-  def mergeAnnotation(a1: Either[String, Json], b1: Either[String, Json]): Either[String, Json] = {
-    for {
-      a <-  a1
-      b <- b1
-    } yield a.merge(b)
-  }
-
 
   /**
    * A [[LogAppender]] for unstructured logging, which simply turns everything
@@ -95,11 +69,46 @@ object Example {
     meh
   }
 
+}
+
+final case class LoggingAnnotation[A](key: String, value: A)(implicit encoder: JsonEncoder[A]){
+  def encode() = s"{\"${key}\": \"${value.toJson}\"}"
+}
 
 
+sealed trait Logging {
+
+  private def escape(value: String) = "\"" + value + "\""
+
+   private def annotateEffect(value: String): ZIO.LogAnnotate =  ZIO.logAnnotate(escape("context"), value)
+
+  def error[A](context: LoggingAnnotation[A], message: String)(implicit encoder: JsonEncoder[A]): UIO[Unit] = {
+    annotateEffect(context.encode()) {
+      ZIO.logError(escape(message))
+    }
+  }
+  def info[A](context: LoggingAnnotation[A], message: String)(implicit encoder: JsonEncoder[A]): UIO[Unit] = {
+    annotateEffect(context.encode()) {
+      ZIO.logError(escape(message))
+    }
+  }
+  def warn[A](context: LoggingAnnotation[A], message: String)(implicit encoder: JsonEncoder[A]): UIO[Unit] = {
+    annotateEffect(context.encode()) {
+      ZIO.logError(escape(message))
+    }
+  }
+  def debug[A](context: LoggingAnnotation[A], message: String)(implicit encoder: JsonEncoder[A]): UIO[Unit] = {
+    annotateEffect(context.encode()) {
+      ZIO.logError(escape(message))
+    }
+  }
+
+  //function make or build
 }
 
 object App extends ZIOAppDefault {
+
+  object LoggingLive extends Logging
 
 
  import zio.logging._
@@ -108,27 +117,6 @@ object App extends ZIOAppDefault {
 
     import zio._
 
-  //make Logging service
-  //global, for things injected before. local for local commits
-
-  //inject any context into json form
-  //if always pass key,value string->string pair
- val effect =  ZIO.logAnnotate("\"context\"", "{\"apples\": \"sauce\"}"){
-   for {
-     _ <- ZIO.log("\"log 1\"")
-     _ <- ZIO.log("\"log 2\"")
-   } yield ()
- }
-
-  val effect2 =  ZIO.logAnnotate("\"context\"", "{\"bananas\": \"pancake\"}"){
-    for {
-      _ <- ZIO.log("\"log 2\"")
-      // _ <- ZIO.log("\"log 2\"")
-    } yield ()
-  }
-
-
-
-  override def run =   effect *> effect2
+  override def run = LoggingLive.error(LoggingAnnotation("size", 10), "the payload is too big")
 
 }
